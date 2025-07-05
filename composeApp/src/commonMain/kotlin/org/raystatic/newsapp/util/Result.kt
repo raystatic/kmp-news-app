@@ -1,38 +1,28 @@
 package org.raystatic.newsapp.util
 
-sealed interface Result<out D, out E: Error> {
-    data class Success<out D>(val data: D): Result<D, Nothing>
-    data class Error<out E: org.raystatic.newsapp.util.Error>(val error: E): Result<Nothing, E>
+sealed class Result<out S, out E> {
+    data class Success<out S>(val data: S) : Result<S, Nothing>()
+    data class Error<out E>(val exception: E) : Result<Nothing, E>()
 }
 
-inline fun <T, E: Error, R> Result<T, E>.map(map: (T) -> R): Result<R, E> {
-    return when(this) {
-        is Result.Error -> Result.Error(error)
-        is Result.Success -> Result.Success(map(data))
-    }
-}
-
-fun <T, E: Error> Result<T, E>.asEmptyDataResult(): EmptyResult<E> {
-    return map {  }
-}
-
-inline fun <T, E: Error> Result<T, E>.onSuccess(action: (T) -> Unit): Result<T, E> {
-    return when(this) {
+// Optional: Extension functions for easier handling
+inline fun <S, E, R> Result<S, E>.map(transform: (S) -> R): Result<R, E> {
+    return when (this) {
+        is Result.Success -> Result.Success(transform(data))
         is Result.Error -> this
-        is Result.Success -> {
-            action(data)
-            this
-        }
-    }
-}
-inline fun <T, E: Error> Result<T, E>.onError(action: (E) -> Unit): Result<T, E> {
-    return when(this) {
-        is Result.Error -> {
-            action(error)
-            this
-        }
-        is Result.Success -> this
     }
 }
 
-typealias EmptyResult<E> = Result<Unit, E>
+inline fun <S, E> Result<S, E>.onSuccess(action: (S) -> Unit): Result<S, E> {
+    if (this is Result.Success) {
+        action(data)
+    }
+    return this
+}
+
+inline fun <S, E> Result<S, E>.onError(action: (E) -> Unit): Result<S, E> {
+    if (this is Result.Error) {
+        action(exception)
+    }
+    return this
+}
